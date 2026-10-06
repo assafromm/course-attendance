@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { googleIdentityEmail, verifySupabaseGoogle } from '../server/identity.js';
 const user=()=>({id:'verified-user',email:'Lecturer@mail.huji.ac.il',app_metadata:{provider:'google'},identities:[{provider:'google',identity_data:{email:'Lecturer@mail.huji.ac.il',email_verified:true}}]});
-test('Supabase identity is Google-verified and email-domain restricted',()=>{
+test('Supabase identity requires verified Google, without restricting email domains',()=>{
   assert.equal(googleIdentityEmail(user(),['mail.huji.ac.il']),'lecturer@mail.huji.ac.il');
-  assert.throws(()=>googleIdentityEmail(user(),['example.org']),/אוניברסיטאי/);
+  const external=user();external.email='External@gmail.com';external.identities[0].identity_data.email='External@gmail.com';
+  assert.equal(googleIdentityEmail(external),'external@gmail.com');
   const unverified=user();unverified.identities[0].identity_data.email_verified=false;
   assert.throws(()=>googleIdentityEmail(unverified,['mail.huji.ac.il']),/מאומת/);
   const mismatch=user();mismatch.identities[0].identity_data.email='other@mail.huji.ac.il';

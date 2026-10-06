@@ -13,7 +13,6 @@ const developmentLogin = !production && process.env.DEV_LOGIN === 'true' && ['12
 const frontend = (process.env.FRONTEND_URL || `http://localhost:${port}`).replace(/\/$/, '');
 const origin = new URL(frontend).origin;
 const admins = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-const domains = (process.env.GOOGLE_HOSTED_DOMAINS || '').split(',').map(x => x.trim()).filter(Boolean);
 const clientId = process.env.GOOGLE_CLIENT_ID || '';
 const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/\/$/,'');
 const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY || '';
@@ -21,10 +20,9 @@ if(supabaseKey&&!supabaseKey.startsWith('sb_publishable_')){
   let role;try{role=JSON.parse(Buffer.from(supabaseKey.split('.')[1]||'','base64url').toString()).role;}catch{}
   if(role!=='anon')throw new Error('SUPABASE_PUBLISHABLE_KEY must be a public publishable/anon key, never a secret or service-role key');
 }
-const emailDomains = (process.env.UNIVERSITY_EMAIL_DOMAINS || '').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
-const supabaseConfigured = !!(supabaseUrl && supabaseKey && emailDomains.length);
+const supabaseConfigured = !!(supabaseUrl && supabaseKey);
 if(supabaseUrl && new URL(supabaseUrl).protocol!=='https:')throw new Error('SUPABASE_URL must use HTTPS');
-if (production && ((!supabaseConfigured && (!clientId || !domains.length)) || !admins.length)) throw new Error('Production requires a configured Google/Supabase identity provider and ADMIN_EMAILS');
+if (production && ((!supabaseConfigured && !clientId) || !admins.length)) throw new Error('Production requires a configured Google/Supabase identity provider and ADMIN_EMAILS');
 const store = createStore(process.env.DATABASE_PATH || 'data/attendance.sqlite');
 const { one, all, run, audit, transaction, permission, meeting } = store;
 admins.forEach(email => run("INSERT INTO teachers(email,role) VALUES(?,'admin') ON CONFLICT(email) DO UPDATE SET role='admin',active=1", email));
@@ -76,15 +74,15 @@ const windowValues = body => {
 };
 app.get('/api/config', (req,res) => res.json({ googleClientId:supabaseConfigured?'':clientId, developmentLogin, frontend, supabase:supabaseConfigured?{url:supabaseUrl,publishableKey:supabaseKey}:null }));
 app.post('/api/auth/supabase',async(req,res)=>{
-  try { const email=await verifySupabaseGoogle(req.body.accessToken,{url:supabaseUrl,key:supabaseKey,domains:emailDomains});res.json(login(email)); }
+  try { const email=await verifySupabaseGoogle(req.body.accessToken,{url:supabaseUrl,key:supabaseKey});res.json(login(email)); }
   catch(e){audit('anonymous','auth.rejected',null,null,{provider:'supabase',reason:e.message});throw e;}
 });
 app.post('/api/auth/google', async (req,res) => {
-  if (!clientId || !domains.length) throw new Problem('כניסה באמצעות Google טרם הוגדרה',503);
+  if (!clientId) throw new Problem('כניסה באמצעות Google טרם הוגדרה',503);
   let payload;
   try { const ticket=await new OAuth2Client(clientId).verifyIdToken({ idToken:req.body.credential, audience:clientId }); payload=ticket.getPayload(); }
   catch { throw new Problem('ההזדהות באמצעות Google לא הצליחה',401); }
-  if (!payload?.email_verified || !domains.includes(payload.hd)) throw new Problem('יש להשתמש בחשבון Google האוניברסיטאי המורשה',403);
+  if (!payload?.email_verified || typeof payload.email!=='string') throw new Problem('יש להיכנס באמצעות חשבון Google מאומת',403);
   res.json(login(payload.email.toLowerCase()));
 });
 app.post('/api/auth/dev', (req,res) => { if (!developmentLogin) throw new Problem('לא נמצא',404); res.json(login('demo@local.test')); });

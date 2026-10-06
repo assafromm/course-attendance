@@ -15,6 +15,7 @@ test('cloud SQL: identity, atomic roster, private tables, slip correction and re
       create function auth.uid() returns uuid language sql as
         $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;`);
     await db.exec(await readFile(new URL('../supabase/migrations/20261006_attendance.sql', import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261006_external_lecturers.sql', import.meta.url),'utf8'));
     const rpc = async (path,body={},method='GET') => (await db.query(
       'select public.attendance_api($1,$2,$3::jsonb) as result',[path,method,JSON.stringify(body)])).rows[0].result;
     assert.ok((await rpc('/courses')).error);
@@ -43,6 +44,24 @@ test('cloud SQL: identity, atomic roster, private tables, slip correction and re
     assert.equal((await rpc(`/meetings/${meeting.id}/slips/revoke`,{numbers:[s3.number],reason:'בדיקה'},'POST')).count,1);
     assert.ok((await rpc(`/slip/${s3.token}`)).error);
     assert.equal((await rpc('/teachers',{email:'other@mail.huji.ac.il'},'POST')).ok,true);
+    assert.ok((await rpc('/teachers',{email:'invalid'},'POST')).error);
+    assert.equal((await rpc('/teachers',{email:'external.lecturer@gmail.com'},'POST')).ok,true);
+    const externalId='00000000-0000-4000-8000-000000000002';
+    await db.query("insert into auth.users values($1,'external.lecturer@gmail.com','{\"provider\":\"google\"}')",[externalId]);
+    await db.query("insert into auth.identities values($1,'google','{\"email\":\"external.lecturer@gmail.com\",\"email_verified\":true}')",[externalId]);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[externalId]);
+    assert.equal((await rpc('/me')).email,'external.lecturer@gmail.com');
+    assert.ok((await rpc(`/courses/${course.id}`)).error);
+    assert.ok((await rpc('/teachers',{email:'someone@gmail.com'},'POST')).error);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);
+    assert.equal((await rpc(`/courses/${course.id}/members`,{email:'external.lecturer@gmail.com'},'POST')).ok,true);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[externalId]);
+    assert.equal((await rpc(`/courses/${course.id}`)).course.id,course.id);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);
+    assert.equal((await rpc('/teachers/revoke',{email:'external.lecturer@gmail.com'},'POST')).ok,true);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[externalId]);
+    assert.ok((await rpc('/me')).error);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);
     assert.equal((await rpc(`/meetings/${meeting.id}`,{closed:true},'PATCH')).ok,true);
     assert.equal((await rpc(`/slip/${s1.token}`)).students.length,0);
     assert.ok((await rpc(`/slip/${s1.token}/claim`,{studentId:detail.students[0].id},'POST')).error);

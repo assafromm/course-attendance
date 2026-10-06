@@ -25,8 +25,8 @@ Open http://localhost:4173 and select the clearly marked local development login
 - Repeat-scan display of the registered identifier and correction while registration remains open.
 - Database transactions and unique constraints prevent duplicate student registrations. A rejected duplicate does not consume an unused slip.
 - Manual lecturer registration with a mandatory reason, attendance CSV export, and append-only audit records.
-- Google ID-token verification on the server, a verified Google Workspace domain check, administrator email allowlist and course-specific authorization.
-- Optional Supabase Google OAuth with PKCE, adapted from Journal Compass. The server verifies the Supabase access token with its Auth service and checks the Google identity and university email domain. Browser-supplied roles and editable user metadata are not trusted.
+- Verified Google login with any email domain, administrator-approved active lecturers and course-specific authorization. Private Gmail accounts and external Google Workspace accounts are supported; this is not open registration.
+- Optional Supabase Google OAuth with PKCE, adapted from Journal Compass. The server verifies the access token with its Auth service and checks the verified Google identity. Browser-supplied roles and editable user metadata are not trusted.
 - Administrator lecturer directory with disabling/re-enabling access. Disabling access immediately revokes existing attendance sessions. Course owners can separately remove team access without deleting history.
 - A white, sky-blue and red visual theme adapted from Journal Compass.
 
@@ -48,7 +48,7 @@ The public frontend uses GitHub Pages and a dedicated Supabase PostgreSQL backen
 Repository: `assafromm/course-attendance`. Intended site: `https://assafromm.github.io/course-attendance/`.
 
 1. Enable Google OAuth in the dedicated Supabase project. Add the exact public site URL and `http://localhost:4173/` to its allowed redirects; set the public site as the default Site URL.
-2. Run `supabase/migrations/20261006_attendance.sql` once in that isolated project. It creates private RLS tables and a single checked RPC, with only the university administrator initially authorized. Do not run it over another application's database.
+2. Run the SQL files in `supabase/migrations/` in filename order, once each, in that isolated project. The first creates private RLS tables and a checked RPC; the external-lecturers migration removes the original university-domain requirement without changing existing authorizations or data. Do not run these over another application's database.
 3. Enable GitHub Pages with GitHub Actions. `.github/workflows/pages.yml` tests and builds with `VITE_CLOUD=true` and the public Supabase URL/publishable key, then deploys the static frontend. No privileged service key belongs in this repository or browser.
 4. Verify Google login, roster import, phone QR scan, teacher isolation, printing, closure and correction using the production URLs before a real class. Existing local courses and localhost slips do not automatically transfer or work on students' phones; issue slips from the public site.
 
@@ -56,9 +56,9 @@ Do not copy local rosters or the SQLite database into the repository. Local and 
 
 ### Supabase Google login option
 
-Set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `UNIVERSITY_EMAIL_DOMAINS` (for example, the verified email domains of the authorized lecturers), and `ADMIN_EMAILS`. When these are present, the interface uses Supabase instead of the direct Google-ID-token flow. The Supabase project must have Google enabled and allow the exact `${FRONTEND_URL}/` callback URL. PKCE session state uses sessionStorage under an attendance-specific key, and attendance permissions remain in the attendance database.
+Set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `ADMIN_EMAILS`. The interface then uses Supabase instead of the direct Google-ID-token flow. Google must be enabled with the exact `${FRONTEND_URL}/` callback URL. PKCE state uses sessionStorage and permissions remain in the attendance database. Domain restrictions are not used: only verified Google accounts explicitly authorized by the administrator or course owner may access attendance data.
 
-The Journal Compass source confirmed that it uses Supabase Google OAuth with invitation-backed roles, and the attendance implementation adapts that approach. Its live settings and database were not modified or copied. Attendance uses an isolated Supabase project. Verified Google identities and active lecturer permissions are checked on every privileged cloud request; browser-supplied roles and editable user metadata are not trusted.
+The Journal Compass source confirmed that it uses Supabase Google OAuth with invitation-backed roles, and the attendance implementation adapts that approach. Its live settings and database were not modified or copied. Attendance uses an isolated project. Verified Google identities and active lecturer permissions are checked on every privileged cloud request; no university-domain restriction applies. Browser-supplied roles and editable user metadata are not trusted.
 
 Teacher disabling preserves course memberships and owned course records. Re-enabling access restores those preserved memberships, but previously revoked session tokens remain invalid. System administrators cannot be disabled through the UI. Owners cannot remove their own ownership.
 
