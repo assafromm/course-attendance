@@ -1,0 +1,21 @@
+/* Nine generous cards per A4 page. Content determines height: never overlaps. */
+@media print {
+  .slip-grid { grid-template-columns: repeat(3, 1fr); align-items: stretch; }
+  .slip {
+    height: auto;
+    min-height: 87mm;
+    padding: 4mm 3mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1mm;
+    line-height: 1.25;
+  }
+  .slip div { width: 100%; gap: 1mm; overflow-wrap: anywhere; }
+  .slip div b { font-size: 10pt; }
+  .slip img { flex: 0 0 auto; width: 33mm; height: 33mm; margin: 1mm auto; }
+  .slip small { white-space: normal; }
+}

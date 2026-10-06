@@ -1,0 +1,26 @@
+/* The palette and understated academic surfaces used in Journal Compass. */
+:root{--navy:#252525;--teal:#b51a2a;--muted:#666;--line:#dedede;color:#252525;background:#fff}
+body{background:#fff}.sidebar{background:#fff;color:#252525;border-left:1px solid #dedede}
+.brand small,.sidebar-label,.user-row small{color:#666}.brand-mark{background:#cb1c2d;color:#fff;border-radius:3px}
+.sidebar select{background:#f7f7f7;color:#252525;border-color:#dedede}.new-course{color:#a61626}
+.new-course:hover{color:#b51a2a;background:#f8e2e5}.sidebar nav button{color:#333;border-radius:3px}
+.sidebar nav button.selected{background:#cb1c2d;color:#fff;box-shadow:none}.sidebar nav button:hover{background:#f8e2e5;color:#951b28}
+.sidebar nav button.selected:hover{background:#b51a2a;color:#fff}.user-row{border-color:#dedede}
+.avatar{background:#e3f0fa;color:#951b28;border-radius:3px}.demo-tag{background:#e3f0fa;color:#1c608d}
+.topbar{background:#f7f7f7}.stat,.panel{border-radius:5px}.stat-icon{background:#e3f0fa;color:#1c608d;border-radius:3px}
+.eyebrow{color:#a61626}.page-heading{border-right:4px solid #cb1c2d;padding-right:18px}
+.meeting-band{background:#f2f8fc;border-color:#d8e7f3;border-radius:4px}.count{background:#e3f0fa;color:#1c608d}
+button,input,select,textarea{border-radius:4px}button.primary{background:#b51a2a;border-color:#b51a2a}
+button.primary:hover{background:#971624}button:hover{background:#e3f0fa;border-color:#9bbdd7}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline-color:#5498d2}
+.login,.student-page{background:#f7f9fb}.login-card,.student-card{border-radius:6px;box-shadow:0 10px 40px #25252508}
+.login-card{border-top:4px solid #cb1c2d}.empty-icon{background:#e3f0fa;color:#1c608d}
+.settings-card .member{flex-wrap:wrap}.member>button{margin-right:auto;font-size:.8rem;padding:5px 8px}
+.access-list{display:grid;gap:10px;margin:18px 0}.access-row{display:flex;gap:12px;align-items:center;border-bottom:1px solid #ededed;padding:10px 0;flex-wrap:wrap}
+.access-row>div{flex:1;min-width:170px}.access-row small{display:block;color:#666;font-size:.8rem}.access-row button{font-size:.8rem}
+.slips-panel{margin-top:24px}.slip-summary{display:flex;gap:18px;flex-wrap:wrap;padding:0 24px 18px;color:#666;font-size:.9rem}
+.slip-picker{display:flex;gap:8px;flex-wrap:wrap;max-height:250px;overflow-y:auto;margin:16px 0}
+.slip-picker label{display:flex;align-items:center;gap:7px;padding:8px 12px;background:#f7f7f7;border:1px solid #dedede;border-radius:4px;font-size:.85rem}
+.slip-picker input{min-height:0;width:16px;height:16px;accent-color:#b51a2a}.slip-picker label:has(input:checked){background:#f8e2e5;border-color:#cb1c2d}
+.google-button{width:100%;border-color:#c7c7c7;margin:14px 0;color:#252525}.google-button:hover{background:#f2f8fc}
+@media(max-width:700px){.sidebar{border-left:0;border-bottom:1px solid #dedede}.slip-summary{padding-inline:16px}.page-heading{padding-right:12px}}

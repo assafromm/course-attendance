@@ -1,0 +1,38 @@
+name: Publish attendance frontend
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_CLOUD: 'true'
+          VITE_SUPABASE_URL: https://cvtyeqsxxkedxmgwnrgt.supabase.co
+          # Publishable browser key, NOT a service-role key or credential.
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_wt90b6qsR64gFvJrjsVcyA_TkXT01Ca
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+      - uses: actions/deploy-pages@v4
+        id: deploy

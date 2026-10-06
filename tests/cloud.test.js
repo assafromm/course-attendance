@@ -1,0 +1,56 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
+
+test('cloud SQL: identity, atomic roster, private tables, slip correction and revocation', async () => {
+  const db = new PGlite({ extensions: { pgcrypto } });
+  try {
+    await db.exec(`create role anon; create role authenticated;
+      create schema extensions; create extension pgcrypto with schema extensions;
+      create schema auth;
+      create table auth.users(id uuid primary key,email text,raw_app_meta_data jsonb);
+      create table auth.identities(user_id uuid,provider text,identity_data jsonb);
+      create function auth.uid() returns uuid language sql as
+        $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;`);
+    await db.exec(await readFile(new URL('../supabase/migrations/20261006_attendance.sql', import.meta.url),'utf8'));
+    const rpc = async (path,body={},method='GET') => (await db.query(
+      'select public.attendance_api($1,$2,$3::jsonb) as result',[path,method,JSON.stringify(body)])).rows[0].result;
+    assert.ok((await rpc('/courses')).error);
+    const uid='00000000-0000-4000-8000-000000000001';
+    await db.query("insert into auth.users values($1,'assaf.romm@mail.huji.ac.il','{\"provider\":\"google\"}')",[uid]);
+    await db.query("insert into auth.identities values($1,'google','{\"email\":\"assaf.romm@mail.huji.ac.il\",\"email_verified\":true}')",[uid]);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);
+    assert.equal((await rpc('/me')).role,'admin');
+    const roster=[{identifier:'001234567',first_name:'בדיקה',last_name:'אחד'},{identifier:'009876543',first_name:'בדיקה',last_name:'שניים'}];
+    const input={name:'בדיקה בלבד',code:'99999',year:'תשפ״ז',semester:'א',group_name:'1',students:roster};
+    assert.ok((await rpc('/courses/with-roster',{...input,students:[roster[0],roster[0]]},'POST')).error);
+    assert.equal((await rpc('/courses')).length,0);
+    const course=await rpc('/courses/with-roster',input,'POST');assert.ok(course.id,JSON.stringify(course));
+    const detail=await rpc(`/courses/${course.id}`);assert.equal(detail.students[0].identifier,'001234567');
+    const meeting=await rpc(`/courses/${course.id}/meetings`,{title:'בדיקה',date:'2026-10-06'},'POST');assert.ok(meeting.id,JSON.stringify(meeting));
+    const issued=await rpc(`/meetings/${meeting.id}/slips`,{count:3},'POST');assert.equal(issued.slips.length,3);
+    for(const slip of issued.slips) assert.match(slip.token,/^[A-Za-z0-9_-]{43}$/);
+    const [s1,s2,s3]=issued.slips;
+    await db.query("select set_config('request.jwt.claim.sub','',false)");
+    const view=await rpc(`/slip/${s1.token}`);assert.equal(view.students[0].suffix,'4567');assert.equal(view.students[0].identifier,undefined);
+    assert.equal((await rpc(`/slip/${s1.token}/claim`,{studentId:detail.students[0].id},'POST')).corrected,false);
+    assert.ok((await rpc(`/slip/${s2.token}/claim`,{studentId:detail.students[0].id},'POST')).error);
+    assert.equal((await rpc(`/slip/${s1.token}/claim`,{studentId:detail.students[1].id},'POST')).corrected,true);
+    assert.equal((await rpc(`/slip/${s2.token}/claim`,{studentId:detail.students[0].id},'POST')).corrected,false);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);
+    assert.equal((await rpc(`/meetings/${meeting.id}/slips/revoke`,{numbers:[s3.number],reason:'בדיקה'},'POST')).count,1);
+    assert.ok((await rpc(`/slip/${s3.token}`)).error);
+    assert.equal((await rpc('/teachers',{email:'other@mail.huji.ac.il'},'POST')).ok,true);
+    assert.equal((await rpc(`/meetings/${meeting.id}`,{closed:true},'PATCH')).ok,true);
+    assert.equal((await rpc(`/slip/${s1.token}`)).students.length,0);
+    assert.ok((await rpc(`/slip/${s1.token}/claim`,{studentId:detail.students[0].id},'POST')).error);
+    const audit=await rpc(`/courses/${course.id}/audit`);assert.ok(audit.some(a=>a.action==='attendance.rejected'));
+    assert.ok(!JSON.stringify(audit).includes(s1.token));
+    await assert.rejects(db.exec('update attendance_private.audit set actor=\'changed\''));
+    await db.exec('set role anon');
+    await assert.rejects(db.exec('select * from attendance_private.students'));
+    await assert.rejects(db.exec("select attendance_private.import_roster(null,'[]')"));
+  } finally { await db.close(); }
+});

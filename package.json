@@ -1,0 +1,29 @@
+{
+  "name": "course-attendance",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env server/index.js",
+    "build": "vite build",
+    "test": "node --test tests/*.test.js",
+    "start": "node --env-file-if-exists=.env server/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "exceljs": "^4.4.0",
+    "express": "^5.1.0",
+    "google-auth-library": "^10.0.0",
+    "papaparse": "^5.5.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "vite": "^7.1.0"
+  }
+}
