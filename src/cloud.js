@@ -14,11 +14,16 @@ export async function cloudRequest(path, body, method) {
   };
   if (path === '/auth/logout') return { ok: true };
   const login = path === '/auth/supabase';
+  const payload = { ...(body || {}) };
+  // datetime-local inputs carry no offset. Convert using the lecturer's clock.
+  for (const key of ['opens', 'closes']) {
+    if (payload[key]) payload[key] = new Date(payload[key]).toISOString();
+  }
   const client = await authClient(supabase);
   const { data, error } = await client.rpc('attendance_api', {
     path: login ? '/me' : path,
     method: login ? 'GET' : method || (body ? 'POST' : 'GET'),
-    body: login ? {} : body || {}
+    body: login ? {} : payload
   });
   if (error) throw new Error('לא ניתן להתחבר למערכת. נסו שוב בעוד רגע.');
   if (data?.error) throw new Error(data.error);
