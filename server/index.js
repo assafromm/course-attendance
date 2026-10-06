@@ -155,7 +155,7 @@ app.patch('/api/attendance/:id',authenticate,(req,res)=>{
   const student=one('SELECT id FROM students WHERE id=? AND course_id=?',req.body.studentId,m.course_id);if(!student)throw new Problem('הסטודנט לא נמצא');
   transaction(()=>{run('UPDATE attendance SET student_id=?,updated=? WHERE id=?',student.id,new Date().toISOString(),a.id);audit(req.user.email,'attendance.teacher_corrected',m.course_id,m.id,{before:a.student_id,after:student.id,reason});});res.json({ok:true});
 });
-app.get('/api/courses/:id/audit',authenticate,(req,res)=>{permission(req.user.email,req.params.id);res.json(all('SELECT * FROM audit WHERE course_id=? ORDER BY id DESC LIMIT 500',req.params.id));});
+app.get('/api/courses/:id/audit',authenticate,(req,res)=>{if(req.user.role!=='admin')throw new Problem('יומן הפעילות זמין למנהל המערכת בלבד',403);permission(req.user.email,req.params.id);res.json(all('SELECT * FROM audit WHERE course_id=? ORDER BY id DESC LIMIT 500',req.params.id));});
 app.get('/api/slip/:token',(req,res)=>{
   const s=store.slip(req.params.token),m=meeting(s.meeting_id),c=one('SELECT name,code,group_name FROM courses WHERE id=?',m.course_id);let isOpen=true;try{store.open(m);}catch{isOpen=false;}
   const a=one('SELECT a.updated,st.identifier,st.first_name,st.last_name,st.id FROM attendance a JOIN students st ON st.id=a.student_id WHERE a.slip_id=?',s.id);

@@ -20,6 +20,8 @@ test('revocation immediately stops existing lecturer sessions and course access'
     const c=(await api('/courses',{name:'גישה לבדיקה',code:'00000',group_name:'1'})).data;
     await api(`/courses/${c.id}/members`,{email:teacher});
     assert.equal((await api(`/courses/${c.id}`,null,teacherToken)).status,200);
+    assert.equal((await api(`/courses/${c.id}/audit`,null,teacherToken)).status,403);
+    assert.equal((await api(`/courses/${c.id}/audit`)).status,200);
     assert.equal((await api('/teachers',null,teacherToken)).status,403);
     assert.equal((await api(`/courses/${c.id}/members/revoke`,{email:teacher},teacherToken)).status,403);
     await api(`/courses/${c.id}/members/revoke`,{email:teacher});

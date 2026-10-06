@@ -16,6 +16,7 @@ test('cloud SQL: identity, atomic roster, private tables, slip correction and re
         $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;`);
     await db.exec(await readFile(new URL('../supabase/migrations/20261006_attendance.sql', import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261006_external_lecturers.sql', import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261006_restrict_audit.sql', import.meta.url),'utf8'));
     const rpc = async (path,body={},method='GET') => (await db.query(
       'select public.attendance_api($1,$2,$3::jsonb) as result',[path,method,JSON.stringify(body)])).rows[0].result;
     assert.ok((await rpc('/courses')).error);
@@ -57,6 +58,7 @@ test('cloud SQL: identity, atomic roster, private tables, slip correction and re
     assert.equal((await rpc(`/courses/${course.id}/members`,{email:'external.lecturer@gmail.com'},'POST')).ok,true);
     await db.query("select set_config('request.jwt.claim.sub',$1,false)",[externalId]);
     assert.equal((await rpc(`/courses/${course.id}`)).course.id,course.id);
+    assert.ok((await rpc(`/courses/${course.id}/audit`)).error);
     await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);
     assert.equal((await rpc('/teachers/revoke',{email:'external.lecturer@gmail.com'},'POST')).ok,true);
     await db.query("select set_config('request.jwt.claim.sub',$1,false)",[externalId]);
