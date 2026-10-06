@@ -39,7 +39,7 @@ npm.cmd test
 npm.cmd run build
 ```
 
-Twelve tests cover token secrecy, permissions, duplicate attempts, correction, roster-update history, registration windows, audit immutability, identity verification, revocation and role/course-aware navigation. Lecturers cannot read the audit log through either API. The exact cloud SQL migrations are tested in embedded PostgreSQL with pgcrypto, including private-table denial and atomic roster creation. Public Google login was verified. Phone scanning and print-to-PDF should be checked before a real class.
+Thirteen tests cover token secrecy, permissions, duplicate attempts, correction, roster-update history, registration windows, audit immutability, identity verification, revocation, role/course-aware navigation and exact twenty-slip pagination. Lecturers cannot read the audit log through either API. The cloud SQL migrations are tested in embedded PostgreSQL with pgcrypto. Public Google login was verified. Phone scanning and print-to-PDF should be checked before a real class.
 
 ## Hosting agreed with the user
 
@@ -69,7 +69,7 @@ Teacher disabling preserves course memberships and owned course records. Re-enab
 - `server/store.js`: SQLite schema, transactional claim/correction logic, token hashing and append-only audit.
 - `src/cloud.js`: cloud RPC transport and public build configuration.
 - `supabase/migrations/20261006_attendance.sql`: private cloud schema, authorization, transactional RPC and append-only audit.
-- `src/print.css`: generous A4 cards without fixed-height content overlap.
+- `src/print.css`, `src/print-layout.js`: explicit A4 pages with four columns and five rows, 20 slips per page and 26mm QR codes. Print at 100% size, with browser headers/footers disabled. Long headings are constrained to their own text area and never overlap adjacent slips.
 - `src/navigation.js`: course-aware navigation; activity logs are administrator-only. Administrators retain system-level lecturer access management even with no selected course.
 - `data/`: local persistent database, ignored by Git and Docker.
 - `dist/`: generated static frontend, ignored by Git.

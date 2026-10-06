@@ -1,21 +1,41 @@
-/* Nine generous cards per A4 page. Content determines height: never overlaps. */
+/* Explicit A4 pages: 4 columns x 5 rows, with 2mm pagination tolerance. */
+.slip-grid { display: block; }
+.slip-page { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 18px; }
+@media (max-width:700px) { .slip-page { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media print {
-  .slip-grid { grid-template-columns: repeat(3, 1fr); align-items: stretch; }
+  @page { size: A4 portrait; margin: 10mm; }
+  .slip-grid { display: block; width: 190mm; }
+  .slip-page {
+    width: 190mm;
+    height: 275mm;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(5, 55mm);
+    break-after: page;
+    page-break-after: always;
+    break-inside: avoid;
+  }
+  .slip-page:last-child { break-after: auto; page-break-after: auto; }
   .slip {
-    height: auto;
-    min-height: 87mm;
-    padding: 4mm 3mm;
+    height: 55mm;
+    min-height: 0;
+    min-width: 0;
+    padding: 2mm;
     break-inside: avoid;
     page-break-inside: avoid;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    gap: 1mm;
-    line-height: 1.25;
+    gap: .3mm;
+    line-height: 1.15;
+    overflow: hidden;
   }
-  .slip div { width: 100%; gap: 1mm; overflow-wrap: anywhere; }
-  .slip div b { font-size: 10pt; }
-  .slip img { flex: 0 0 auto; width: 33mm; height: 33mm; margin: 1mm auto; }
-  .slip small { white-space: normal; }
+  .slip div { width: 100%; height: 12mm; flex: 0 0 12mm; gap: .3mm; overflow-wrap: anywhere; align-content: start; }
+  .slip div b { font-size: 7.5pt; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .slip div span { font-size: 6.5pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slip img { flex: 0 0 auto; width: 26mm; height: 26mm; margin: 0 auto; }
+  .slip strong { font-size: 8pt; }
+  .slip small { font-size: 6pt; white-space: nowrap; }
 }
