@@ -17,6 +17,7 @@ test('cloud SQL: identity, atomic roster, private tables, slip correction and re
     await db.exec(await readFile(new URL('../supabase/migrations/20261006_attendance.sql', import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261006_external_lecturers.sql', import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261006_restrict_audit.sql', import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261007_delete_course.sql', import.meta.url),'utf8'));
     const rpc = async (path,body={},method='GET') => (await db.query(
       'select public.attendance_api($1,$2,$3::jsonb) as result',[path,method,JSON.stringify(body)])).rows[0].result;
     assert.ok((await rpc('/courses')).error);
@@ -59,6 +60,7 @@ test('cloud SQL: identity, atomic roster, private tables, slip correction and re
     await db.query("select set_config('request.jwt.claim.sub',$1,false)",[externalId]);
     assert.equal((await rpc(`/courses/${course.id}`)).course.id,course.id);
     assert.ok((await rpc(`/courses/${course.id}/audit`)).error);
+    assert.ok((await rpc(`/courses/${course.id}/delete`,{confirmName:course.name},'POST')).error);
     await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);
     assert.equal((await rpc('/teachers/revoke',{email:'external.lecturer@gmail.com'},'POST')).ok,true);
     await db.query("select set_config('request.jwt.claim.sub',$1,false)",[externalId]);
@@ -70,6 +72,15 @@ test('cloud SQL: identity, atomic roster, private tables, slip correction and re
     const audit=await rpc(`/courses/${course.id}/audit`);assert.ok(audit.some(a=>a.action==='attendance.rejected'));
     assert.ok(!JSON.stringify(audit).includes(s1.token));
     await assert.rejects(db.exec('update attendance_private.audit set actor=\'changed\''));
+    assert.ok((await rpc(`/courses/${course.id}/delete`,{confirmName:'wrong'},'POST')).error);
+    assert.equal((await rpc('/courses')).length,1);
+    const other=await rpc('/courses/with-roster',input,'POST');
+    assert.equal((await rpc(`/courses/${course.id}/delete`,{confirmName:course.name},'POST')).ok,true);
+    assert.equal((await rpc('/courses')).length,1);
+    assert.equal((await rpc(`/courses/${other.id}`)).students.length,2);
+    assert.ok((await rpc(`/slip/${s1.token}`)).error);
+    assert.equal((await db.query('select count(*)::int n from attendance_private.attendance where meeting_id=$1',[meeting.id])).rows[0].n,0);
+    assert.equal((await db.query("select count(*)::int n from attendance_private.audit where action='course.deleted' and course_id=$1",[course.id])).rows[0].n,1);
     await db.exec('set role anon');
     await assert.rejects(db.exec('select * from attendance_private.students'));
     await assert.rejects(db.exec("select attendance_private.import_roster(null,'[]')"));

@@ -104,6 +104,20 @@ app.post('/api/courses',authenticate,(req,res)=>{
 app.get('/api/courses/:id',authenticate,(req,res)=>{
   permission(req.user.email,req.params.id); audit(req.user.email,'course.viewed',req.params.id); res.json({course:one('SELECT * FROM courses WHERE id=?',req.params.id),students:all('SELECT * FROM students WHERE course_id=? ORDER BY last_name,first_name',req.params.id),meetings:all('SELECT m.*, (SELECT COUNT(*) FROM attendance WHERE meeting_id=m.id) AS attendance_count,(SELECT COUNT(*) FROM slips WHERE meeting_id=m.id) AS slip_count FROM meetings m WHERE course_id=? ORDER BY date DESC',req.params.id),members:all('SELECT email FROM members WHERE course_id=?',req.params.id)});
 });
+app.post('/api/courses/:id/delete',authenticate,(req,res)=>{
+  transaction(()=>{
+    const c=one('SELECT * FROM courses WHERE id=?',req.params.id);
+    if(!c||c.owner!==req.user.email)throw new Problem('רק בעל הקורס יכול למחוק אותו',403);
+    if(req.body.confirmName!==c.name)throw new Problem('יש להקליד את שם הקורס במדויק לאישור המחיקה');
+    run('DELETE FROM attendance WHERE meeting_id IN (SELECT id FROM meetings WHERE course_id=?)',c.id);
+    run('DELETE FROM slips WHERE meeting_id IN (SELECT id FROM meetings WHERE course_id=?)',c.id);
+    run('DELETE FROM meetings WHERE course_id=?',c.id);
+    run('DELETE FROM students WHERE course_id=?',c.id);
+    run('DELETE FROM members WHERE course_id=?',c.id);
+    run('DELETE FROM courses WHERE id=?',c.id);
+    audit(req.user.email,'course.deleted',c.id,null,{name:c.name});
+  });res.json({ok:true});
+});
 app.post('/api/courses/:id/students',authenticate,(req,res)=>{
   const course=req.params.id; permission(req.user.email,course);
   if (!Array.isArray(req.body.students) || !req.body.students.length || req.body.students.length>2000) throw new Problem('יש לייבא בין 1 ל־2000 סטודנטים');
