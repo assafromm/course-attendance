@@ -6,6 +6,7 @@ import { authClient, startGoogleLogin, signOutGoogle } from './auth.js';
 import { cloudEnabled, cloudRequest } from './cloud.js';
 import { navigationItems } from './navigation.js';
 import { slipPages } from './print-layout.js';
+import { detectRosterColumns } from './roster-import.js';
 import './style.css';
 import './compass-theme.css';
 import './print.css';
@@ -144,7 +145,7 @@ function Importer({onClose,onImport,children,title='ייבוא רשימת סטו
     else if(/\.csv$/i.test(file.name)){const result=Papa.parse((await file.text()).replace(/^\uFEFF/,''),{skipEmptyLines:'greedy',dynamicTyping:false});if(result.errors.length)throw new Error('לא ניתן לקרוא את קובץ ה־CSV. בדקו את המבנה.');rows=result.data;}
     else throw new Error('בחרו קובץ CSV או XLSX.');
     if(rows.length<2)throw new Error('לא נמצאו שורות סטודנטים בקובץ');if(rows.length>2001)throw new Error('אפשר לייבא עד 2000 סטודנטים בכל פעם');
-    const heads=rows[0].map((h,i)=>String(h).trim() || `עמודה ${i+1}`);setHeaders(heads);setData(rows.slice(1));const find=regexp=>String(heads.findIndex(h=>regexp.test(h)));setMapping({first_name:find(/שם פרטי|first.?name/i),last_name:find(/שם משפחה|last.?name|surname/i),identifier:find(/תעודת|ת״ז|ת.ז|מספר סטודנט|id.?number|student.?id|username/i)});
+    const heads=rows[0].map((h,i)=>String(h).trim() || `עמודה ${i+1}`);setHeaders(heads);setData(rows.slice(1));setMapping(detectRosterColumns(heads));
   }catch(e){setError(e.message);setData([]);}finally{setBusy(false);}};
   const rows=data.map(row=>Object.fromEntries(['identifier','first_name','last_name'].map(k=>[k,String(row[Number(mapping[k])] ?? '').trim()])));
   const counts=new Map();rows.forEach(r=>counts.set(r.identifier,(counts.get(r.identifier)||0)+1));
